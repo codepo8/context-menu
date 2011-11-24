@@ -1,0 +1,155 @@
+You may not know it, but the HTML5 specifications go beyond what we put in the pages and also define how parts of the browser should become available to developers with HTML, CSS and JavaScript. One of these parts of the specs are <a href="http://www.whatwg.org/specs/web-apps/current-work/multipage/interactive-elements.html#context-menus">context menus</a>, or "right click menus". Using HTML5 and a menu element you can add new options to these without having to write a browser add-on. In Firefox 8 (the current one) we have support for those. See the following screencast for a <a href="http://thewebrocks.com/demos/context-meny">context menu demo</a> which is available on the web, too.
+
+<video controls width="100%" preload="none" poster="http://cf.cdn.vid.ly/8e1y1v/poster.jpg"><source src="http://cf.cdn.vid.ly/8e1y1v/mp4.mp4" type="video/mp4"><source src="http://cf.cdn.vid.ly/8e1y1v/webm.webm" type="video/webm"><source src="http://cf.cdn.vid.ly/8e1y1v/ogv.ogv" type="video/ogg"><a target='_blank' href='http://vid.ly/8e1y1v'><img src='http://cf.cdn.vid.ly/8e1y1v/poster.jpg' width="500"></a></video>
+
+The image example is pretty simple and was actually written by Paul Rouget as a demo <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=617528">in the original Firefox bug request</a>. The main core is the HTML of it:
+
+<pre lang="xml">
+<section id="noninteractive" contextmenu="imagemenu">
+
+  <img src="html5.png" alt="HTML5" id="menudemo">
+    
+    <menu type="context" id="imagemenu">
+      <menuitem label="rotate" onclick="rotate()"
+                icon="arrow_rotate_clockwise.png">
+      </menuitem>
+      <menuitem label="resize" onclick="resize()"
+                icon="image-resize.png">
+      </menuitem>
+      <menu label="share">
+        <menuitem label="twitter" onclick="alert('not yet')"></menuitem>
+        <menuitem label="facebook" onclick="alert('not yet')"></menuitem>
+      </menu>
+    </menu>
+
+</section>
+</pre> 
+
+As you can see you link the <code>menu</code> element to an element via its ID. The <code>contextmenu</code> attribute then points to this one. Each menu can have several <code>menuitems</code>. Each of those gets a textual label and a possible icon. You can also nest <code>menu</code> elements to create multiple layer menus. Here, we add inline <clode>onclick</clode> handlers to point to different JavaScript functions to call when the menu item gets activated. The resulting context menu looks like this:
+
+
+The functionality is simple, all the <code>rotate()</code> and <code>resize()</code> functions do is add class names to the image using <code>querySelector</code> and <code>classList</code>:
+
+<pre lang="javascript">
+function rotate() {
+  document.querySelector('#menudemo').classList.toggle('rotate'); 
+}
+function resize() {   
+  document.querySelector('#menudemo').classList.toggle('resize'); 
+}
+</pre>
+
+The real functionality is in CSS transforms and transitions. As the image has an ID of <code>menudemo</code> here is what is needed in CSS to rotate and resize:
+
+<pre lang="css">
+#menudemo { 
+  -moz-transition: 0.2s; 
+  width:200px;
+}
+#menudemo.rotate { 
+  -moz-transform: rotate(90deg); 
+}
+#menudemo.resize { 
+  -moz-transform: scale(0.7); 
+}
+#menudemo.resize.rotate { 
+  -moz-transform: scale(0.7) rotate(90deg); 
+}
+</pre>
+
+Notice, that in a real product we should of course add the other browser prefixes and go prefix-less but as the functionality now only works in Firefox, this is enough for this demo.
+
+<h2>Detecting support and visual hinting</h2>
+
+Now, as this is extending the normal user offerings in the browser we need to make it obvious that there is a right-click menu available. In CSS3, there is a <code>context-menu</code> cursor available to us. When context menus are available, this should be shown:
+
+<pre lang="css">
+.contextmenu #menudemo, .contextmenu .demo {
+  cursor: context-menu;
+}
+</pre>
+
+We test the browser for support by checking for contextmenu on the body element and for <code>HTMLMenuItemElement</code> in the window.
+
+<pre lang="javascript">
+if ('contextMenu' in document.body && 'HTMLMenuItemElement' in window) {
+  document.documentElement.classList.add('contextmenu');
+} else {
+  return;
+}
+</pre>
+
+Wouldn't HTMLMenuItemElement be enough? Yes, but a real context menu should only offer functionality when it is sensible, and that is where <code>contextMenu</code> comes in.
+
+<h2>Turning menuitems on and off depending on functionality</h2>
+
+As a slightly more complex example, let's add a "count words" functionality to the document. We start with two sections with context menus:
+
+<pre lang="xml">
+<section id="noninteractive" contextmenu="countmenu">
+  <menu type="context" id="countmenu">
+      <menuitem class="wordcount" label="count words"></menuitem>
+  </menu>
+</section>
+
+<section id="interactive" contextmenu="countmenuinteractive">
+  <menu type="context" id="countmenuinteractive">
+      <menuitem class="wordcount" label="count words"></menuitem>
+  </menu>
+</section>
+</pre>
+
+We then loop through all the <code>menuitems</code> with the class <code>wordcount</code> and apply the functionality.
+
+<pre lang="javascript">
+var wordcountmenus = document.querySelectorAll('.wordcount'),
+    i = wordcountmenus.length;
+
+while (i--) {
+  wordcountmenus[i].addEventListener('click', function(ev){
+    var text = document.getSelection(),
+        count = text.toString().split(/\s/).length;
+    counter.innerHTML = count + ' words';
+    counter.style.left = x + 'px';
+    counter.style.top = y + 'px';
+    counter.className = '';
+  }, false);
+}</pre>
+
+<pre lang="javascript">
+var wordcountmenus = document.querySelectorAll('.wordcount'),
+    i = wordcountmenus.length;
+
+while (i--) {
+  wordcountmenus[i].addEventListener('click', function(ev){
+    var text = document.getSelection(),
+        count = text.toString().split(/\s/).length;
+    counter.innerHTML = count + ' words';
+    counter.style.left = x + 'px';
+    counter.style.top = y + 'px';
+    counter.className = '';
+  }, false);
+}</pre>
+
+<pre lang="javascript">
+document.querySelector('#interactive').addEventListener(
+  'contextmenu', function(ev) {
+    this.querySelector('.wordcount').disabled =
+    document.getSelection().isCollapsed;  
+  },
+false);
+</pre>
+
+<pre lang="javascript">
+document.addEventListener('click', function(ev){
+  if (ev.which === 3) {
+    x = ev.pageX;
+    y = ev.pageY;
+  }
+},false);
+</pre>
+
+
+
+https://plus.google.com/115133653231679625609/posts/CJMyExJTbug
+http://addyosmani.github.com/jQuery-contextMenu/
